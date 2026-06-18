@@ -10,6 +10,7 @@
     selectedAgentId: string;
     agents?: AgentOption[];
     gameLogs?: GameLogEntry[];
+    opponentDeckLocked?: boolean;
     busy?: boolean;
     catalogBusy?: boolean;
     error?: string;
@@ -27,6 +28,7 @@
     selectedAgentId = $bindable(),
     agents = [],
     gameLogs = [],
+    opponentDeckLocked = false,
     busy = false,
     catalogBusy = false,
     error = '',
@@ -71,8 +73,18 @@
         <textarea bind:value={deck1Text} spellcheck="false"></textarea>
       </label>
       <label>
-        AI opponent deck
-        <textarea bind:value={deck2Text} spellcheck="false"></textarea>
+        <span class="deck-label-row">
+          AI opponent deck
+          {#if opponentDeckLocked}
+            <small>Agent deck</small>
+          {/if}
+        </span>
+        <textarea
+          bind:value={deck2Text}
+          readonly={opponentDeckLocked}
+          class:locked={opponentDeckLocked}
+          spellcheck="false"
+        ></textarea>
       </label>
     </div>
     <button class="primary" disabled={busy || !selectedAgentId} onclick={startGame}>
@@ -190,6 +202,19 @@
     font-weight: 800;
   }
 
+  .deck-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .deck-label-row small {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
   textarea {
     width: 100%;
     min-height: 54vh;
@@ -199,6 +224,12 @@
     background: var(--input-bg);
     color: var(--input-text);
     padding: 12px;
+  }
+
+  textarea.locked {
+    background: var(--surface-inset-bg);
+    color: var(--text-secondary);
+    cursor: default;
   }
 
   select {

@@ -137,10 +137,13 @@
   });
   $effect(() => {
     const deckUrl = selectedAgent?.deckUrl ?? '';
-    if (!deckUrl || deckUrl === lastLoadedAgentDeckUrl) {
+    if (!deckUrl) {
+      lastLoadedAgentDeckUrl = '';
       return;
     }
-    lastLoadedAgentDeckUrl = deckUrl;
+    if (deckUrl === lastLoadedAgentDeckUrl) {
+      return;
+    }
     void loadSelectedAgentDeck(deckUrl);
   });
   let zoneViewerOpen = $derived(zoneViewerStore.open);
@@ -409,6 +412,7 @@
         throw new Error(`${deckUrl}: ${response.status}`);
       }
       deckImportStore.deck2Text = await response.text();
+      lastLoadedAgentDeckUrl = deckUrl;
     } catch (error) {
       catalogError = error instanceof Error ? error.message : String(error);
     }
@@ -932,6 +936,7 @@
         bind:selectedAgentId
         {agents}
         {gameLogs}
+        opponentDeckLocked={!!selectedAgent?.deckUrl}
         busy={sessionBusy}
         {catalogBusy}
         {error}

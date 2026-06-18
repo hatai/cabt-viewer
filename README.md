@@ -4,8 +4,9 @@ Svelte 5 viewer for CABT, the Card Battle environment used by the Kaggle
 Pokemon TCG AI Battle Challenge.
 
 This repo contains the viewer, replay support, generated card metadata, and a
-thin optional local engine bridge. It does not include Kaggle's native CABT
-engine files, raw card CSV, private agents, or strategy notes.
+thin optional local engine bridge. It also includes public sample agents adapted
+from Kaggle-provided examples. It does not include Kaggle's native CABT engine
+files, raw card CSV, private agents, or strategy notes.
 
 ![CABT Viewer replay preview](public/preview.png)
 
@@ -65,6 +66,18 @@ npm run dev
 ```
 
 Then open `http://localhost:5173`.
+
+The opponent selector includes:
+
+- `First legal option`: generic fallback policy that uses the editable opponent
+  deck text box.
+- `Official random sample (Mega Abomasnow)`: Kaggle sample-submission policy
+  with its Mega Abomasnow ex deck.
+- `Rule-based Mega Lucario ex`: Kaggle notebook sample with its deck.
+- `Rule-based Dragapult ex`: Kaggle notebook sample with its deck.
+
+Deck-backed sample agents load their bundled `deck.csv` into the opponent deck
+box and make it read-only so the agent and deck stay paired.
 
 On Linux, the bridge uses your local Python. On macOS, it starts Docker with
 `--platform linux/amd64` and mounts `CABT_SAMPLE_SUBMISSION_DIR` read-only into
@@ -148,7 +161,7 @@ npm run build     # TypeScript + production build
 
 ## Notes
 
-- The default opponent is a generic first-legal-option policy.
+- The Hydrapple agent and other private agents are intentionally not included.
 - Private agents should be configured outside this repo boundary.
 - Full card art is loaded from external image URLs when set and collector
   numbers are available; the repo only bundles local UI/energy assets.

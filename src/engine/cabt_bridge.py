@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
+FRONTEND_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_SUBMISSION = Path(
     os.environ.get(
         "CABT_SAMPLE_SUBMISSION_DIR",
@@ -46,7 +47,12 @@ def load_agent(agent_path: str | None) -> AgentFn:
     if not agent_path:
         return first_legal_agent
 
-    path = (WORKSPACE_ROOT / agent_path).resolve()
+    raw_path = Path(agent_path)
+    if raw_path.is_absolute():
+        path = raw_path.resolve()
+    else:
+        frontend_path = (FRONTEND_ROOT / raw_path).resolve()
+        path = frontend_path if frontend_path.exists() else (WORKSPACE_ROOT / raw_path).resolve()
     if not path.exists():
         raise FileNotFoundError(f"Agent file not found: {path}")
 
