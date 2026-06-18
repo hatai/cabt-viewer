@@ -22,6 +22,7 @@ import {
   type CabtObservation,
   type CabtOption,
   type CabtPokemon,
+  type CabtSelectData,
 } from './types';
 
 type Command = {
@@ -577,10 +578,7 @@ function buildPrompts(observation: CabtObservation, activePlayerIndex: number, d
               cards: optionCard ? [cardToView(optionCard, dataMaps)] : [],
             };
           }),
-          options: {
-            min: select.minCount,
-            max: select.maxCount,
-          },
+          options: promptSelectionOptions(select),
           cabtSelect: select,
         },
       },
@@ -609,10 +607,7 @@ function buildPrompts(observation: CabtObservation, activePlayerIndex: number, d
               index: optionIndex,
             };
           }),
-          options: {
-            min: select.minCount,
-            max: select.maxCount,
-          },
+          options: promptSelectionOptions(select),
           cabtSelect: select,
         },
       },
@@ -630,14 +625,36 @@ function buildPrompts(observation: CabtObservation, activePlayerIndex: number, d
       resultSchema: 'optionIndex',
       fields: {
         values: select.option.map((option) => optionLabel(option, dataMaps, observation, select.context)),
-        options: {
-          min: select.minCount,
-          max: select.maxCount,
-        },
+        options: promptSelectionOptions(select),
         cabtSelect: select,
       },
     },
   ];
+}
+
+function promptSelectionOptions(select: CabtSelectData) {
+  const batchCount = repeatedEnergyPaymentCount(select);
+  if (batchCount > select.maxCount) {
+    return {
+      min: Math.min(Math.max(select.minCount, batchCount), select.option.length),
+      max: Math.min(batchCount, select.option.length),
+    };
+  }
+  return {
+    min: select.minCount,
+    max: select.maxCount,
+  };
+}
+
+function repeatedEnergyPaymentCount(select: CabtSelectData) {
+  if (
+    select.maxCount !== 1
+    || select.remainEnergyCost <= 1
+    || (select.context !== CabtSelectContext.DISCARD_ENERGY && select.context !== CabtSelectContext.DISCARD_ENERGY_CARD)
+  ) {
+    return 0;
+  }
+  return select.remainEnergyCost;
 }
 
 function isCardSelectionPrompt(observation: CabtObservation) {

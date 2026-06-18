@@ -184,6 +184,85 @@ describe('cabtObservationToGameView', () => {
     ]);
   });
 
+  it('batches repeated CABT retreat energy payment prompts', () => {
+    const dataMaps: CabtDataMaps = {
+      cardData: {
+        3: {
+          cardId: 3,
+          name: 'Basic {W} Energy',
+          cardType: CabtCardType.BASIC_ENERGY,
+          energyType: 3,
+          set: 'SVE',
+          setNumber: '3',
+        },
+        723: {
+          cardId: 723,
+          name: 'Mega Abomasnow ex',
+          cardType: CabtCardType.POKEMON,
+          stage1: true,
+          hp: 350,
+        },
+      },
+      attacks: {},
+    };
+    const observation = {
+      select: {
+        type: CabtSelectType.CARD,
+        context: CabtSelectContext.DISCARD_ENERGY_CARD,
+        minCount: 1,
+        maxCount: 1,
+        remainDamageCounter: 0,
+        remainEnergyCost: 4,
+        option: [0, 1, 2, 3].map((energyIndex) => ({
+          type: CabtOptionType.ENERGY_CARD,
+          area: CabtAreaType.ACTIVE,
+          index: 0,
+          energyIndex,
+          playerIndex: 0,
+        })),
+        deck: null,
+        contextCard: null,
+        effect: null,
+      },
+      logs: [],
+      current: {
+        turn: 2,
+        turnActionCount: 0,
+        yourIndex: 0,
+        firstPlayer: 0,
+        supporterPlayed: false,
+        stadiumPlayed: false,
+        energyAttached: true,
+        retreated: false,
+        result: -1,
+        stadium: [],
+        looking: null,
+        players: [
+          {
+            ...player(),
+            active: [{
+              id: 723,
+              hp: 350,
+              maxHp: 350,
+              appearThisTurn: false,
+              energies: [3, 3, 3, 3],
+              energyCards: [0, 1, 2, 3].map((index) => ({ id: 3, serial: 80 + index, playerIndex: 0 })),
+              tools: [],
+              preEvolution: [],
+            }],
+          },
+          player(),
+        ],
+      },
+    } satisfies CabtObservation;
+
+    const view = cabtObservationToGameView(observation, [], dataMaps);
+    const prompt = view.prompts[0];
+
+    expect(prompt?.fields.options).toEqual({ min: 4, max: 4 });
+    expect(prompt?.fields.cardList).toHaveLength(4);
+  });
+
   it('resolves current-player card options when CABT omits playerIndex', () => {
     const dataMaps: CabtDataMaps = {
       cardData: {

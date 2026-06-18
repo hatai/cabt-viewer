@@ -4,7 +4,17 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { CabtDemoController, cabtObservationToGameView, type CabtDataMaps } from '../lib/cabt/demoEngine';
-import { CabtAreaType, CabtOptionType, type CabtAttack, type CabtCardData, type CabtObservation, type CabtOption } from '../lib/cabt/types';
+import {
+  CabtAreaType,
+  CabtOptionType,
+  CabtSelectContext,
+  type CabtAttack,
+  type CabtCard,
+  type CabtCardData,
+  type CabtObservation,
+  type CabtOption,
+  type CabtSelectData,
+} from '../lib/cabt/types';
 import rawCardRows from '../lib/cabt/cardData.generated.json';
 import type { CardTarget, EngineResponse, LogView } from '../lib/game/types';
 import { PlayerType, SlotType } from '../lib/game/types';
@@ -185,6 +195,9 @@ export class LocalEngineController {
     if (!select) {
       throw new Error('No CABT selection is currently available.');
     }
+    if (this.canBatchRepeatedSingleSelection(select, selection)) {
+      return this.applyRepeatedSingleSelections(selection);
+    }
     if (selection.length < select.minCount || selection.length > select.maxCount) {
       throw new Error(`Selection must contain ${select.minCount}-${select.maxCount} option(s).`);
     }
@@ -195,6 +208,87 @@ export class LocalEngineController {
     this.applyBridgeResponse(response);
     await this.applyPendingRetreatTarget();
     return this.viewResponse();
+  }
+
+  private canBatchRepeatedSingleSelection(select: CabtSelectData, selection: number[]): boolean {
+    return selection.length > select.maxCount
+      && select.maxCount === 1
+      && (select.context === CabtSelectContext.DISCARD_ENERGY || select.context === CabtSelectContext.DISCARD_ENERGY_CARD)
+      && selection.every((index) => Number.isInteger(index) && index >= 0 && index < select.option.length);
+  }
+
+  private async applyRepeatedSingleSelections(selection: number[]): Promise<EngineResponse> {
+    const initialSelect = this.observation?.select;
+    if (!initialSelect) {
+      throw new Error('No CABT selection is currently available.');
+    }
+    const selectedKeys = selection.map((index) => this.optionCardKey(initialSelect.option[index]) ?? `index:${index}`);
+    for (let step = 0; step < selectedKeys.length; step += 1) {
+      const select = this.observation?.select;
+      if (!select || !this.isRepeatedSingleSelection(select)) {
+        break;
+      }
+      const optionIndex = this.findOptionIndexForKey(select, selectedKeys[step]);
+      if (optionIndex < 0) {
+        break;
+      }
+      const response = await this.bridge.request({
+        command: 'select',
+        selection: [optionIndex],
+      });
+      this.applyBridgeResponse(response);
+    }
+    await this.applyPendingRetreatTarget();
+    return this.viewResponse();
+  }
+
+  private isRepeatedSingleSelection(select: CabtSelectData): boolean {
+    return select.maxCount === 1
+      && (select.context === CabtSelectContext.DISCARD_ENERGY || select.context === CabtSelectContext.DISCARD_ENERGY_CARD);
+  }
+
+  private findOptionIndexForKey(select: CabtSelectData, key: string): number {
+    const byKey = select.option.findIndex((option) => this.optionCardKey(option) === key);
+    if (byKey >= 0) {
+      return byKey;
+    }
+    if (key.startsWith('index:')) {
+      const index = Number(key.slice('index:'.length));
+      return index >= 0 && index < select.option.length ? index : 0;
+    }
+    return select.option.length ? 0 : -1;
+  }
+
+  private optionCardKey(option: CabtOption | undefined): string | undefined {
+    const card = option ? this.cardForOption(option) : null;
+    if (card?.serial !== undefined && card.serial !== null) {
+      return `serial:${card.serial}`;
+    }
+    return undefined;
+  }
+
+  private cardForOption(option: CabtOption): CabtCard | null {
+    const current = this.observation?.current;
+    if (!current || option.area === undefined || option.area === null || option.index === undefined || option.index === null) {
+      return null;
+    }
+    if (option.area === CabtAreaType.STADIUM) {
+      return current.stadium[option.index] ?? null;
+    }
+    if (option.area === CabtAreaType.LOOKING) {
+      return current.looking?.[option.index] ?? null;
+    }
+    const playerIndex = option.playerIndex ?? current.yourIndex;
+    const player = current.players[playerIndex];
+    if (!player) {
+      return null;
+    }
+    if (option.area === CabtAreaType.HAND) return player.hand?.[option.index] ?? null;
+    if (option.area === CabtAreaType.DISCARD) return player.discard[option.index] ?? null;
+    if (option.area === CabtAreaType.PRIZE) return player.prize[option.index] ?? null;
+    if (option.area === CabtAreaType.ACTIVE) return attachedCardForOption(player.active[option.index], option) ?? player.active[option.index] ?? null;
+    if (option.area === CabtAreaType.BENCH) return attachedCardForOption(player.bench[option.index], option) ?? player.bench[option.index] ?? null;
+    return null;
   }
 
   private async applyPendingRetreatTarget(): Promise<void> {
@@ -582,6 +676,19 @@ function agentPathForId(agentId: string | undefined): string | undefined {
   }
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as AgentManifest;
   return manifest.agents?.find((agent) => agent.id === agentId)?.path;
+}
+
+function attachedCardForOption(pokemonCard: { energyCards?: CabtCard[]; tools?: CabtCard[] } | null | undefined, option: CabtOption) {
+  if (!pokemonCard) {
+    return null;
+  }
+  if (option.energyIndex !== undefined && option.energyIndex !== null) {
+    return pokemonCard.energyCards?.[option.energyIndex] ?? null;
+  }
+  if (option.toolIndex !== undefined && option.toolIndex !== null) {
+    return pokemonCard.tools?.[option.toolIndex] ?? null;
+  }
+  return null;
 }
 
 function targetToCabt(actorIndex: number, target: CardTarget): { playerIndex: number; area: number; index: number } {

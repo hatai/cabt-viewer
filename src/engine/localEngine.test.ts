@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LocalEngineController } from './localEngine';
 import { SlotType, targetFor } from '../lib/game/types';
-import { CabtAreaType, CabtOptionType } from '../lib/cabt/types';
+import { CabtAreaType, CabtOptionType, CabtSelectContext } from '../lib/cabt/types';
 
 describe('LocalEngineController', () => {
   process.env.CABT_ENGINE_MODE = 'demo';
@@ -128,5 +128,128 @@ describe('LocalEngineController', () => {
     };
 
     expect(engine.findPendingRetreatTargetOption()).toBe(1);
+  });
+
+  it('batches repeated single-energy retreat payment prompts', async () => {
+    const engine = new LocalEngineController() as any;
+    const selections: number[][] = [];
+    const activeWithFourEnergy = {
+      id: 723,
+      hp: 350,
+      maxHp: 350,
+      appearThisTurn: false,
+      energies: [3, 3, 3, 3],
+      energyCards: [10, 11, 12, 13].map((serial) => ({ id: 3, serial, playerIndex: 0 })),
+      tools: [],
+      preEvolution: [],
+    };
+    const current = {
+      turn: 1,
+      turnActionCount: 0,
+      yourIndex: 0,
+      firstPlayer: 0,
+      supporterPlayed: false,
+      stadiumPlayed: false,
+      energyAttached: true,
+      retreated: false,
+      result: -1,
+      stadium: [],
+      looking: null,
+      players: [
+        {
+          active: [activeWithFourEnergy],
+          bench: [{ id: 722, hp: 90, maxHp: 90, appearThisTurn: false, energies: [], energyCards: [], tools: [], preEvolution: [] }],
+          benchMax: 5,
+          deckCount: 47,
+          discard: [],
+          prize: [],
+          handCount: 0,
+          hand: [],
+          poisoned: false,
+          burned: false,
+          asleep: false,
+          paralyzed: false,
+          confused: false,
+        },
+        {
+          active: [null],
+          bench: [],
+          benchMax: 5,
+          deckCount: 47,
+          discard: [],
+          prize: [],
+          handCount: 0,
+          hand: [],
+          poisoned: false,
+          burned: false,
+          asleep: false,
+          paralyzed: false,
+          confused: false,
+        },
+      ],
+    };
+    const energySelect = (energyCards: typeof activeWithFourEnergy.energyCards) => ({
+      type: 1,
+      context: CabtSelectContext.DISCARD_ENERGY_CARD,
+      minCount: 1,
+      maxCount: 1,
+      remainDamageCounter: 0,
+      remainEnergyCost: energyCards.length,
+      option: energyCards.map((_card, energyIndex) => ({
+        type: CabtOptionType.ENERGY_CARD,
+        area: CabtAreaType.ACTIVE,
+        index: 0,
+        energyIndex,
+        playerIndex: 0,
+      })),
+      deck: null,
+      contextCard: null,
+      effect: null,
+    });
+
+    engine.sessionId = 'test-session';
+    engine.pendingRetreatTarget = { playerIndex: 0, benchIndex: 0 };
+    engine.dataMaps = { cardData: {}, attacks: {} };
+    engine.observation = {
+      select: energySelect(activeWithFourEnergy.energyCards),
+      logs: [],
+      current,
+    };
+    engine.bridge = {
+      request: async ({ selection }: { selection: number[] }) => {
+        selections.push(selection);
+        activeWithFourEnergy.energyCards.shift();
+        activeWithFourEnergy.energies.shift();
+        if (activeWithFourEnergy.energyCards.length) {
+          return {
+            ok: true,
+            observation: { select: energySelect(activeWithFourEnergy.energyCards), logs: [], current },
+          };
+        }
+        return {
+          ok: true,
+          observation: {
+            select: {
+              type: 1,
+              context: CabtSelectContext.TO_ACTIVE,
+              minCount: 1,
+              maxCount: 1,
+              remainDamageCounter: 0,
+              remainEnergyCost: 0,
+              option: [{ type: CabtOptionType.CARD, area: CabtAreaType.BENCH, index: 0, playerIndex: 0 }],
+              deck: null,
+              contextCard: null,
+              effect: null,
+            },
+            logs: [],
+            current,
+          },
+        };
+      },
+    };
+
+    await engine.applySelection([0, 1, 2, 3]);
+
+    expect(selections).toEqual([[0], [0], [0], [0], [0]]);
   });
 });
