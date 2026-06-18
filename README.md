@@ -7,6 +7,8 @@ This repo contains the viewer, replay support, generated card metadata, and a
 thin optional local engine bridge. It does not include Kaggle's native CABT
 engine files, raw card CSV, private agents, or strategy notes.
 
+![CABT Viewer replay preview](public/preview.png)
+
 ## Requirements
 
 - Node.js `>=20.19.0 <25`
