@@ -323,6 +323,75 @@ describe('cabtObservationToGameView', () => {
     ]);
   });
 
+  it('resolves deck-selection card options by option order when CABT omits area and index', () => {
+    const dataMaps: CabtDataMaps = {
+      cardData: {
+        3: {
+          cardId: 3,
+          name: 'Basic {W} Energy',
+          cardType: CabtCardType.BASIC_ENERGY,
+          energyType: 3,
+          set: 'SVE',
+          setNumber: '3',
+        },
+        1145: {
+          cardId: 1145,
+          name: 'Mega Signal',
+          cardType: CabtCardType.ITEM,
+          set: 'MEG',
+          setNumber: '123',
+        },
+      },
+      attacks: {},
+    };
+    const observation = {
+      select: {
+        type: CabtSelectType.CARD,
+        context: CabtSelectContext.DISCARD,
+        minCount: 1,
+        maxCount: 1,
+        remainDamageCounter: 0,
+        remainEnergyCost: 0,
+        option: [
+          { type: CabtOptionType.CARD },
+          { type: CabtOptionType.CARD },
+        ],
+        deck: [
+          { id: 3, serial: 20, playerIndex: 0 },
+          { id: 1145, serial: 21, playerIndex: 0 },
+        ],
+        contextCard: null,
+        effect: null,
+      },
+      logs: [],
+      current: {
+        turn: 1,
+        turnActionCount: 0,
+        yourIndex: 0,
+        firstPlayer: 0,
+        supporterPlayed: false,
+        stadiumPlayed: false,
+        energyAttached: true,
+        retreated: false,
+        result: -1,
+        stadium: [],
+        looking: null,
+        players: [
+          player(),
+          player(),
+        ],
+      },
+    } satisfies CabtObservation;
+
+    const view = cabtObservationToGameView(observation, [], dataMaps);
+    const prompt = view.prompts[0];
+
+    expect(prompt?.fields.cardList).toEqual([
+      expect.objectContaining({ index: 0, name: 'Basic {W} Energy', imageUrl: expect.any(String) }),
+      expect.objectContaining({ index: 1, name: 'Mega Signal', imageUrl: expect.any(String) }),
+    ]);
+  });
+
   it('labels CABT draw-count prompts with numeric choices', () => {
     const observation = {
       select: {

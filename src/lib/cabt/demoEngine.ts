@@ -572,7 +572,7 @@ function buildPrompts(observation: CabtObservation, activePlayerIndex: number, d
         resultSchema: 'optionIndexes',
         fields: {
           prizes: select.option.map((option, optionIndex) => {
-            const optionCard = cardForOption(option, observation);
+            const optionCard = cardForOption(option, observation, optionIndex);
             return {
               index: optionIndex,
               cards: optionCard ? [cardToView(optionCard, dataMaps)] : [],
@@ -597,7 +597,7 @@ function buildPrompts(observation: CabtObservation, activePlayerIndex: number, d
         resultSchema: 'optionIndexes',
         fields: {
           cardList: select.option.map((option, optionIndex) => {
-            const optionCard = cardForOption(option, observation);
+            const optionCard = cardForOption(option, observation, optionIndex);
             const view = optionCard ? cardToView(optionCard, dataMaps) : {
               name: optionLabel(option, dataMaps, observation, select.context),
               fullName: optionLabel(option, dataMaps, observation, select.context),
@@ -665,7 +665,7 @@ function isCardSelectionPrompt(observation: CabtObservation) {
   if (select.context === CabtSelectContext.IS_FIRST) {
     return false;
   }
-  return select.option.some((option) => option.type === CabtOptionType.CARD || !!cardForOption(option, observation));
+  return select.option.some((option, optionIndex) => option.type === CabtOptionType.CARD || !!cardForOption(option, observation, optionIndex));
 }
 
 function promptIdForSelect(select: NonNullable<CabtObservation['select']>) {
@@ -770,14 +770,24 @@ function numberOptionLabel(option: CabtOption, context?: number) {
   return String(value);
 }
 
-function cardForOption(option: CabtOption, observation: CabtObservation): CabtCard | CabtPokemon | null {
+function cardForOption(option: CabtOption, observation: CabtObservation, optionIndex?: number): CabtCard | CabtPokemon | null {
   const area = option.area;
   const index = option.index;
+  const select = observation.select;
+  if (option.cardId) {
+    return {
+      id: option.cardId,
+      playerIndex: option.playerIndex ?? observation.current?.yourIndex,
+      serial: option.serial ?? undefined,
+    };
+  }
+  if ((area === undefined || area === null) && (index === undefined || index === null) && optionIndex !== undefined) {
+    return select?.deck?.[optionIndex] ?? null;
+  }
   if (area === undefined || area === null || index === undefined || index === null) {
     return null;
   }
   const current = observation.current;
-  const select = observation.select;
   if (area === CabtAreaType.DECK) {
     return select?.deck?.[index] ?? null;
   }
