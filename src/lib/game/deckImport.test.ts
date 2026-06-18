@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDeckList, SAMPLE_DECK } from './deckImport';
+import { formatCabtDeckList, parseDeckList, SAMPLE_DECK } from './deckImport';
 
 describe('deck import', () => {
   it('skips section count headers and expands the default deck to 60 cards', () => {
@@ -36,5 +36,29 @@ describe('deck import', () => {
       'Water Energy MEE',
       'Water Energy MEE',
     ]);
+  });
+
+  it('formats CABT deck IDs as grouped import text', () => {
+    const deck = [
+      ...Array.from({ length: 4 }, () => '723'),
+      ...Array.from({ length: 2 }, () => '1145'),
+      ...Array.from({ length: 54 }, () => '3'),
+    ].join('\n');
+
+    const formatted = formatCabtDeckList(deck, [
+      { id: 3, name: 'Basic {W} Energy', set: 'SVE', setNumber: '3', cardType: 5 },
+      { id: 723, name: 'Mega Abomasnow ex', set: 'MEG', setNumber: '36', cardType: 0 },
+      { id: 1145, name: 'Mega Signal', set: 'MEG', setNumber: '121', cardType: 1 },
+    ]);
+
+    expect(formatted).toBe(`Pokemon: 4
+4 Mega Abomasnow ex MEG 36
+
+Trainer: 2
+2 Mega Signal MEG 121
+
+Energy: 54
+54 Basic {W} Energy SVE 3`);
+    expect(parseDeckList(formatted).cards).toHaveLength(60);
   });
 });

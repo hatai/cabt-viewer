@@ -21,7 +21,9 @@
   import ZoneViewer from './lib/components/ZoneViewer.svelte';
   import type { GameCommandApi } from './lib/game/gameApi';
   import { localGameApi } from './lib/game/httpClient';
+  import { formatCabtDeckList } from './lib/game/deckImport';
   import { labelFor } from './lib/game/labels';
+  import cardRows from './lib/cabt/cardData.generated.json';
   import type { BoardInteractionStrategy } from './lib/game/boardInteraction';
   import {
     canPlayCardToBoardArea,
@@ -411,7 +413,7 @@
       if (!response.ok) {
         throw new Error(`${deckUrl}: ${response.status}`);
       }
-      deckImportStore.deck2Text = await response.text();
+      deckImportStore.deck2Text = formatCabtDeckList(await response.text(), cardRows);
       lastLoadedAgentDeckUrl = deckUrl;
     } catch (error) {
       catalogError = error instanceof Error ? error.message : String(error);
