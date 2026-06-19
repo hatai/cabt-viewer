@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 
 FRONTEND_ROOT = Path(__file__).resolve().parents[2]
+WORKSPACE_ROOT = Path(FRONTEND_ROOT).resolve().parent
 SAMPLE_SUBMISSION = Path(
     os.environ.get(
         "CABT_SAMPLE_SUBMISSION_DIR",
