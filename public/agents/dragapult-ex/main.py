@@ -1,8 +1,19 @@
 import os
-import sys
 from collections import defaultdict
 
-from cg.api import AreaType, CardType, Log, LogType, Observation, SelectContext, OptionType, Card, Pokemon, State, all_card_data, to_observation_class
+from cg.api import (
+    AreaType,
+    Card,
+    CardType,
+    Log,
+    LogType,
+    Observation,
+    OptionType,
+    Pokemon,
+    SelectContext,
+    all_card_data,
+    to_observation_class,
+)
 
 """
 Dragapult ex Deck
@@ -14,12 +25,12 @@ This deck focuses on setting up multiple knockouts to take at least three Prize 
 file_path = "deck.csv"
 if not os.path.exists(file_path):
     file_path = "/kaggle_simulations/agent/" + file_path
-with open(file_path, "r") as file:
+with open(file_path) as file:
     csv = file.read().split("\n")
 my_deck = []
 for i in range(60):
     my_deck.append(int(csv[i]))
-    
+
 # Load all card data from the API's helper function
 all_card = all_card_data()
 # Create a lookup table (dictionary) to quickly access card data by its cardId
@@ -113,7 +124,7 @@ def pokemon_score(pokemon: Pokemon, is_attack_damage: bool) -> int:
         score += 250
     elif data.stage1:
         score += 130
-    
+
     id = pokemon.id
     # Squawkabilly ex, Noctowl, Fan Rotom, Archaludon ex
     if id == 144 or id == 322 or id == 323 or id == 337:
@@ -125,7 +136,7 @@ def pokemon_score(pokemon: Pokemon, is_attack_damage: bool) -> int:
 
 
 def add_card_count(card: Card | Pokemon | None, my_index: int):
-    if card == None:
+    if card is None:
         return
     if isinstance(card, Pokemon) or card.playerIndex == my_index:
         if card.serial not in serial_set:
@@ -144,7 +155,7 @@ def set_card_counts(obs: Observation, my_index: int):
     serial_set.clear()
     for id in my_deck:
         card_counts[id] += 1
-    
+
     state = obs.current
     my_state = state.players[my_index]
     for card in my_state.hand:
@@ -157,12 +168,12 @@ def set_card_counts(obs: Observation, my_index: int):
         add_card_count(card, my_index)
     for card in state.stadium:
         add_card_count(card, my_index)
-    if state.looking != None:
+    if state.looking is not None:
         for card in state.looking:
             add_card_count(card, my_index)
     add_card_count(obs.select.effect, my_index)
 
-    
+
 def get_card(obs: Observation, area: AreaType, index: int, player_index: int) -> Pokemon | Card | None:
     """Helper function to safely extract a Card or Pokemon object from specific zones."""
     ps = obs.current.players[player_index]
@@ -209,12 +220,12 @@ def main_option_proc(obs: Observation, damage: int):
             can_attack = True
             if o.attackId == 154:  # Phantom Dive
                 can_main_attack = True
-    
+
     plan_a.attack = -1
     plan_b.attack = -1
     if not can_main_attack and not (bench_attacker and can_switch):
         return
-    
+
     cards = [op_state.active[0]]
     for pokemon in op_state.bench:
         cards.append(pokemon)
@@ -288,12 +299,12 @@ def agent(obs_dict: dict) -> list[int]:
 
     Each element in the returned list must be >= 0 and < len(obs.select.option).
     The list length must be between obs.select.minCount and obs.select.maxCount (inclusive), with no duplicate elements.
-    
+
     Returns:
         list[int]: A list of option index.
     """
     obs = to_observation_class(obs_dict)
-    if obs.select == None:
+    if obs.select is None:
         # In the initial selection, the obs.select is None, and it is necessary to return the deck.
         # The deck is a list of 60 card IDs.
         # The deck must comply with the Pokémon Trading Card Game rules.
@@ -308,7 +319,7 @@ def agent(obs_dict: dict) -> list[int]:
     my_index = state.yourIndex
     my_state = state.players[my_index]
     op_state = state.players[1 - my_index]
-            
+
     if state.turn == 0:
         prize.clear()
         pre_turn_log.clear()
@@ -332,7 +343,7 @@ def agent(obs_dict: dict) -> list[int]:
                 and log.toArea == AreaType.DISCARD):
                 pre_ko = True
 
-    if select.deck != None:
+    if select.deck is not None:
         set_card_counts(obs, my_index)
         for card in select.deck:
             card_counts[card.id] -= 1
@@ -340,14 +351,14 @@ def agent(obs_dict: dict) -> list[int]:
         for id in card_counts:
             for _ in range(card_counts[id]):
                 prize.append(id)
-                
+
     set_card_counts(obs, my_index)
     for id in prize:
         card_counts[id] -= 1
     deck_counts = card_counts
 
     prize_diff = len(my_state.prize) - len(op_state.prize)
-    
+
     global bench_attacker
 
     # Number of cards per card ID on the Bench and in the Active Spot
@@ -356,7 +367,7 @@ def agent(obs_dict: dict) -> list[int]:
     hand_counts = defaultdict(int)
     # Number of cards per card ID in discard pile
     discard_counts = defaultdict(int)
-    
+
     active_id = 0
     bench_attacker = False
     can_evolve_dreepy = False
@@ -364,7 +375,7 @@ def agent(obs_dict: dict) -> list[int]:
     can_evolve_drakloak = False
     damage = 200
     for card in my_state.active:
-        if card == None:
+        if card is None:
             continue
         active_id = card.id
         field_counts[card.id] += 1
@@ -404,7 +415,7 @@ def agent(obs_dict: dict) -> list[int]:
             if active:
                 score += 1000
             return score
-        
+
         # Attach energy
         if pokemon.id == Budew:
             return -1
@@ -451,7 +462,7 @@ def agent(obs_dict: dict) -> list[int]:
         if no_more_dex and (pokemon.id == Dreepy or pokemon.id == Drakloak):
             score -= 500
         return score
-    
+
     def hand_score(id: int, ignore_count: bool):
         score = 0
         if id == Dreepy:
@@ -576,7 +587,7 @@ def agent(obs_dict: dict) -> list[int]:
             else:
                 max_score = -10000
                 for pokemon in my_state.active:
-                    if pokemon == None:
+                    if pokemon is None:
                         continue
                     max_score = max(max_score, attach_score(id, pokemon, True))
                 for pokemon in my_state.bench:
@@ -584,7 +595,7 @@ def agent(obs_dict: dict) -> list[int]:
                 score = max_score - 5000
                 if can_main_attack or bench_attacker:
                     score /= 10
-        
+
         if not ignore_count and hand_counts[id] > 0:
             if id == Drakloak and hand_counts[id] < evolve_dreepy_count:
                 score -= 10
@@ -597,7 +608,7 @@ def agent(obs_dict: dict) -> list[int]:
     global use_support
     if context == SelectContext.MAIN:
         main_option_proc(obs, damage)
-                    
+
         use_support = 0
         if not state.supporterPlayed:
             support_score = 0
@@ -623,9 +634,9 @@ def agent(obs_dict: dict) -> list[int]:
 
     no_draw = (my_state.deckCount <= 8)  # Whether to restrict actions that reduce the deck
     do_switch = (not can_main_attack and (bench_attacker or (active_id != Budew and field_counts[Budew] >= 1 and state.turn >= 2)))
-    effect_card_id = 0 if select.effect == None else select.effect.id
-    context_card_id = 0 if select.contextCard == None else select.contextCard.id
-    
+    effect_card_id = 0 if select.effect is None else select.effect.id
+    context_card_id = 0 if select.contextCard is None else select.contextCard.id
+
     scores = []  # Score for each action
     for o in select.option:
         score = 0  # The default and baseline score is 0.
@@ -638,7 +649,7 @@ def agent(obs_dict: dict) -> list[int]:
                 score = 1
         elif o.type == OptionType.CARD:
             card = get_card(obs, o.area, o.index, o.playerIndex)
-            if card != None:
+            if card is not None:
                 energy_count = 0
                 hp = 0
                 if isinstance(card, Pokemon):
@@ -849,5 +860,5 @@ def agent(obs_dict: dict) -> list[int]:
                 or select.minCount > i
                 or (context != SelectContext.TO_BENCH and context != SelectContext.SETUP_BENCH_POKEMON)):
                 output.append(sorted_scores[i][0])
-                
+
     return output

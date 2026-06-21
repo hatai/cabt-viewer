@@ -1,8 +1,18 @@
 import os
-import sys
 from collections import defaultdict
 
-from cg.api import AreaType, CardType, EnergyType, Observation, SelectContext, OptionType, Card, Pokemon, all_card_data, to_observation_class
+from cg.api import (
+    AreaType,
+    Card,
+    CardType,
+    EnergyType,
+    Observation,
+    OptionType,
+    Pokemon,
+    SelectContext,
+    all_card_data,
+    to_observation_class,
+)
 
 """
 Mega Lucario ex Deck
@@ -14,7 +24,7 @@ This deck battles by strategically switching between Mega Lucario ex as the main
 file_path = "deck.csv"
 if not os.path.exists(file_path):
     file_path = "/kaggle_simulations/agent/" + file_path
-with open(file_path, "r") as file:
+with open(file_path) as file:
     csv = file.read().split("\n")
 my_deck = []
 for i in range(60):
@@ -104,7 +114,7 @@ def pokemon_score(pokemon: Pokemon) -> int:
         score += 250
     elif data.stage1:
         score += 130
-    
+
     id = pokemon.id
     # Squawkabilly ex, Noctowl, Fan Rotom, Archaludon ex
     if id == 144 or id == 322 or id == 323 or id == 337:
@@ -120,17 +130,17 @@ def agent(obs_dict: dict) -> list[int]:
 
     Each element in the returned list must be >= 0 and < len(obs.select.option).
     The list length must be between obs.select.minCount and obs.select.maxCount (inclusive), with no duplicate elements.
-    
+
     Returns:
         list[int]: A list of option index.
     """
     obs = to_observation_class(obs_dict)
-    if obs.select == None:
+    if obs.select is None:
         # In the initial selection, the obs.select is None, and it is necessary to return the deck.
         # The deck is a list of 60 card IDs.
         # The deck must comply with the Pokémon Trading Card Game rules.
         return my_deck
-        
+
     state = obs.current
     select = obs.select
     context = select.context
@@ -146,7 +156,7 @@ def agent(obs_dict: dict) -> list[int]:
         pre_turn = state.turn
         plan = AttackPlan()
         ability_used = False
-            
+
     field_counts = defaultdict(int)  # Number of cards per card ID on the Bench and in the Active Spot
     hand_counts = defaultdict(int)  # Number of cards per card ID in hand
     discard_counts = defaultdict(int)  # Number of cards per card ID in discard pile
@@ -154,7 +164,7 @@ def agent(obs_dict: dict) -> list[int]:
     attacker1 = False
     attacker2 = False
     for card in my_state.active + my_state.bench:
-        if card == None:
+        if card is None:
             continue
         field_counts[card.id] += 1
         if card.id == Makuhita or card.id == Hariyama:
@@ -173,7 +183,7 @@ def agent(obs_dict: dict) -> list[int]:
     stadium_id = 0
     for card in state.stadium:
         stadium_id = card.id
-            
+
     can_attack = False
     if context == SelectContext.MAIN:
         can_switch = False
@@ -196,7 +206,7 @@ def agent(obs_dict: dict) -> list[int]:
                 can_attack = True
                 if o.attackId == 983:  # Mega Brave
                     can_use_mega_brave = True
-        
+
         my_cards = [my_state.active[0]]
         for pokemon in my_state.bench:
             my_cards.append(pokemon)
@@ -245,10 +255,10 @@ def agent(obs_dict: dict) -> list[int]:
                         if field_counts[Lunatone] >= 1:
                             energy_required = 1
                             base_damage = 70
-                    
+
                     if base_damage <= 0:
                         continue
-                    
+
                     more_energy = False
                     energy_count = len(my_pokemon.energies)
                     if a == 1 and i == 0 and energy_count >= 2 and not can_use_mega_brave:
@@ -279,10 +289,10 @@ def agent(obs_dict: dict) -> list[int]:
                         else:
                             score *= damage / op_pokemon.hp
                         score += base_score
-                            
+
                         if len(op_state.prize) <= prize:
                             score = 50000
-                        
+
                         if i == 0:
                             score += 220
                         if j == 0:
@@ -295,7 +305,7 @@ def agent(obs_dict: dict) -> list[int]:
                             plan.attack_index = a
                             plan.remain_hp = op_pokemon.hp - damage
                             plan.energy = more_energy
-    
+
     # Attach energy score
     def energy_score(pokemon: Pokemon, active: bool) -> int:
         energy_count = len(pokemon.energies)
@@ -335,7 +345,7 @@ def agent(obs_dict: dict) -> list[int]:
             score = 1  # Prefer "Yes"
         elif o.type == OptionType.CARD:
             card = get_card(obs, o.area, o.index, o.playerIndex)
-            if card != None:
+            if card is not None:
                 energy_count = 0
                 if isinstance(card, Pokemon):
                     energy_count = len(card.energies)

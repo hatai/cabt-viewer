@@ -5,9 +5,9 @@ import json
 import os
 import sys
 import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
-
+from typing import Any
 
 FRONTEND_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = Path(FRONTEND_ROOT).resolve().parent
@@ -21,7 +21,6 @@ sys.path.insert(0, str(SAMPLE_SUBMISSION))
 
 from cg.api import all_attack, all_card_data  # noqa: E402
 from cg.game import battle_finish, battle_select, battle_start  # noqa: E402
-
 
 AgentFn = Callable[[dict[str, Any]], list[int]]
 MAX_AUTO_STEPS = 10000
