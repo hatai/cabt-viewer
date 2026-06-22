@@ -95,11 +95,25 @@ export function autoResolvablePromptResult(prompt: PromptView | undefined, game:
   return undefined;
 }
 
-export function shouldAutoResolvePrompt(prompt: PromptView | undefined, autoConfirmPrompts: boolean, result: unknown): boolean {
+export function shouldAutoResolvePrompt(
+  prompt: PromptView | undefined,
+  autoConfirmPrompts: boolean,
+  result: unknown,
+  allowForcedAutoResolve = true,
+): boolean {
   if (!prompt || result === undefined) {
     return false;
   }
-  return isForcedAutoResolvePrompt(prompt) || autoConfirmPrompts;
+  if (prompt.fields.playbackOnly === true) {
+    return false;
+  }
+  if (prompt.className === 'ShuffleDeckPrompt') {
+    return true;
+  }
+  if (isForcedAutoResolvePrompt(prompt)) {
+    return allowForcedAutoResolve;
+  }
+  return autoConfirmPrompts;
 }
 
 export function isForcedAutoResolvePrompt(prompt: PromptView | undefined): boolean {
